@@ -5,8 +5,10 @@ import com.tickettriage.ticket_triage.entity.Ticket;
 import com.tickettriage.ticket_triage.repository.TicketRepository;
 import com.tickettriage.ticket_triage.service.RoutingService;
 import com.tickettriage.ticket_triage.service.TicketAnalysisService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -49,5 +51,24 @@ public class TicketController {
         );
 
         return ticketRepository.save(ticket);
+    }
+
+    @GetMapping
+    public List<Ticket> getAllTickets() {
+        return ticketRepository.findAll();
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Ticket> updateTicketStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request) {
+
+        return ticketRepository.findById(id)
+                .map(ticket -> {
+                    ticket.setStatus(request.get("status"));
+                    Ticket updatedTicket = ticketRepository.save(ticket);
+                    return ResponseEntity.ok(updatedTicket);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 }
