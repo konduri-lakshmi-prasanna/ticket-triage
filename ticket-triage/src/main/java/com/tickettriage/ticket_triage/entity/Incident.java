@@ -22,6 +22,9 @@ public class Incident {
 
     private Integer ticketCount;
 
+    @Column(length = 2000)
+    private String ticketIds;
+
     private String status;
 
     private LocalDateTime createdAt;
@@ -85,6 +88,14 @@ public class Incident {
 
     public void setTicketCount(Integer ticketCount) {
         this.ticketCount = ticketCount;
+    }
+
+    public String getTicketIds() {
+        return ticketIds;
+    }
+
+    public void setTicketIds(String ticketIds) {
+        this.ticketIds = ticketIds;
     }
 
     public String getStatus() {
