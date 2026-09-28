@@ -1,19 +1,43 @@
 import { useState } from 'react';
-import { Box, Container, CssBaseline, Tab, Tabs, ThemeProvider, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  Container,
+  CssBaseline,
+  Tab,
+  Tabs,
+  ThemeProvider,
+  Typography,
+} from '@mui/material';
+
 import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
+
 import theme from './theme';
 import { loadRecentIds, saveRecentId } from './lib';
+
 import SubmitPanel from './components/SubmitPanel';
 import TrackPanel from './components/TrackPanel';
+import AdminDashboard from './components/AdminDashboard';
 
 const HOW_IT_WORKS = [
-  { title: 'You describe the problem', text: 'Write it in your own words, in any language.' },
-  { title: 'We route it', text: 'Your request goes straight to the team that handles it.' },
-  { title: 'You follow progress', text: 'Use your ticket number to see the status any time.' },
+  {
+    title: 'You describe the problem',
+    text: 'Write it in your own words, in any language.',
+  },
+  {
+    title: 'We route it',
+    text: 'Your request goes straight to the team that handles it.',
+  },
+  {
+    title: 'You follow progress',
+    text: 'Use your ticket number to see the status any time.',
+  },
 ];
 
 function App() {
   const [tab, setTab] = useState(0);
+  const [adminMode, setAdminMode] = useState(false);
+
   const [submitted, setSubmitted] = useState(null);
   const [tracked, setTracked] = useState(null);
   const [recentIds, setRecentIds] = useState(loadRecentIds);
@@ -28,11 +52,111 @@ function App() {
     setTab(1);
   };
 
+  /*
+   * ADMIN DASHBOARD
+   *
+   * This is a separate view from the customer UI.
+   * The customer UI remains unchanged.
+   */
+  if (adminMode) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+
+        <Box
+          sx={{
+            minHeight: '100vh',
+            bgcolor: 'background.default',
+          }}
+        >
+          {/* Admin top bar */}
+          <Box
+            component="header"
+            sx={{
+              bgcolor: 'background.paper',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              px: { xs: 2, md: 4 },
+              py: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 2,
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.25,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 2,
+                  bgcolor: 'primary.main',
+                  color: '#fff',
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
+              >
+                <SupportAgentRoundedIcon fontSize="small" />
+              </Box>
+
+              <Box>
+                <Typography
+                  variant="h3"
+                  sx={{
+                    fontSize: 20,
+                    lineHeight: 1.1,
+                  }}
+                >
+                  Support Center
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                >
+                  Admin
+                </Typography>
+              </Box>
+            </Box>
+
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setAdminMode(false)}
+            >
+              Back to Support Center
+            </Button>
+          </Box>
+
+          <AdminDashboard />
+        </Box>
+      </ThemeProvider>
+    );
+  }
+
+  /*
+   * CUSTOMER UI
+   *
+   * This is your friend's original UI.
+   */
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
 
-      <Box component="header" sx={{ bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
+      <Box
+        component="header"
+        sx={{
+          bgcolor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
         <Container
           maxWidth="lg"
           sx={{
@@ -43,7 +167,14 @@ function App() {
             gap: 1,
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, py: 1.5 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.25,
+              py: 1.5,
+            }}
+          >
             <Box
               sx={{
                 width: 34,
@@ -57,40 +188,121 @@ function App() {
             >
               <SupportAgentRoundedIcon fontSize="small" />
             </Box>
-            <Typography variant="h3" sx={{ fontSize: 20 }}>
+
+            <Typography
+              variant="h3"
+              sx={{
+                fontSize: 20,
+              }}
+            >
               Support Center
             </Typography>
           </Box>
 
-          <Tabs value={tab} onChange={(_, value) => setTab(value)} aria-label="Support sections">
-            <Tab label="New request" />
-            <Tab label="Track a ticket" />
-          </Tabs>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+            }}
+          >
+            <Tabs
+              value={tab}
+              onChange={(_, value) => setTab(value)}
+              aria-label="Support sections"
+            >
+              <Tab label="New request" />
+              <Tab label="Track a ticket" />
+            </Tabs>
+
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setAdminMode(true)}
+            >
+              Admin
+            </Button>
+          </Box>
         </Container>
       </Box>
 
-      <Container maxWidth="lg" component="main" sx={{ py: { xs: 4, md: 7 } }}>
+      <Container
+        maxWidth="lg"
+        component="main"
+        sx={{
+          py: { xs: 4, md: 7 },
+        }}
+      >
         <Box
           sx={{
             display: 'grid',
             gap: { xs: 4, md: 8 },
-            gridTemplateColumns: { xs: '1fr', md: '5fr 7fr' },
+            gridTemplateColumns: {
+              xs: '1fr',
+              md: '5fr 7fr',
+            },
             alignItems: 'start',
           }}
         >
-          <Box component="section" sx={{ position: { md: 'sticky' }, top: 32 }}>
-            <Typography variant="h1" sx={{ fontSize: { xs: 34, md: 46 }, lineHeight: 1.08 }}>
-              {tab === 0 ? 'Tell us what went wrong.' : 'See where your request stands.'}
+          <Box
+            component="section"
+            sx={{
+              position: { md: 'sticky' },
+              top: 32,
+            }}
+          >
+            <Typography
+              variant="h1"
+              sx={{
+                fontSize: {
+                  xs: 34,
+                  md: 46,
+                },
+                lineHeight: 1.08,
+              }}
+            >
+              {tab === 0
+                ? 'Tell us what went wrong.'
+                : 'See where your request stands.'}
             </Typography>
-            <Typography color="text.secondary" sx={{ mt: 2, fontSize: 17, lineHeight: 1.6, maxWidth: 460 }}>
+
+            <Typography
+              color="text.secondary"
+              sx={{
+                mt: 2,
+                fontSize: 17,
+                lineHeight: 1.6,
+                maxWidth: 460,
+              }}
+            >
               {tab === 0
                 ? 'Send one message. We sort it, send it to the right team, and give you a ticket number to follow.'
                 : 'Your ticket status updates on its own while this page is open.'}
             </Typography>
 
-            <Box component="ol" sx={{ listStyle: 'none', p: 0, m: 0, mt: 4, display: { xs: 'none', md: 'block' } }}>
+            <Box
+              component="ol"
+              sx={{
+                listStyle: 'none',
+                p: 0,
+                m: 0,
+                mt: 4,
+                display: {
+                  xs: 'none',
+                  md: 'block',
+                },
+              }}
+            >
               {HOW_IT_WORKS.map((step, i) => (
-                <Box component="li" key={step.title} sx={{ display: 'flex', gap: 2, mb: 2.5 }}>
+                <Box
+                  component="li"
+                  key={step.title}
+                  sx={{
+                    display: 'flex',
+                    gap: 2,
+                    mb: 2.5,
+                  }}
+                >
                   <Box
                     aria-hidden
                     sx={{
@@ -108,9 +320,16 @@ function App() {
                   >
                     {i + 1}
                   </Box>
+
                   <Box>
-                    <Typography sx={{ fontWeight: 600 }}>{step.title}</Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography sx={{ fontWeight: 600 }}>
+                      {step.title}
+                    </Typography>
+
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                    >
                       {step.text}
                     </Typography>
                   </Box>
@@ -119,7 +338,6 @@ function App() {
             </Box>
           </Box>
 
-          {/* Both panels stay mounted so a half-written message is not lost when switching tabs */}
           <Box hidden={tab !== 0}>
             <SubmitPanel
               submitted={submitted}
@@ -128,6 +346,7 @@ function App() {
               onReset={() => setSubmitted(null)}
             />
           </Box>
+
           <Box hidden={tab !== 1}>
             <TrackPanel
               ticket={tracked}
