@@ -4,8 +4,13 @@ import {
   Button,
   Chip,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
 
@@ -15,6 +20,7 @@ import PriorityHighRoundedIcon from '@mui/icons-material/PriorityHighRounded';
 import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 
 import {
   API_URL,
@@ -31,6 +37,12 @@ function AdminDashboard() {
   const [updatingId, setUpdatingId] = useState(null);
   const [detectingIncidents, setDetectingIncidents] = useState(false);
   const [error, setError] = useState('');
+
+  // Search and filter state
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [priorityFilter, setPriorityFilter] = useState('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
 
   const loadDashboard = async () => {
     try {
@@ -139,6 +151,50 @@ function AdminDashboard() {
     (incident) => incident.status === 'ACTIVE'
   ).length;
 
+  /*
+   * Create the category list dynamically from the tickets.
+   */
+  const categories = [
+    ...new Set(
+      tickets
+        .map((ticket) => ticket.category)
+        .filter(Boolean)
+    ),
+  ].sort();
+
+  /*
+   * Apply all search/filter conditions.
+   */
+  const filteredTickets = tickets.filter((ticket) => {
+    const search = searchText.trim().toLowerCase();
+
+    const matchesSearch =
+      search === '' ||
+      String(ticket.id).includes(search) ||
+      (ticket.message || '').toLowerCase().includes(search) ||
+      (ticket.category || '').toLowerCase().includes(search) ||
+      (ticket.department || '').toLowerCase().includes(search);
+
+    const matchesStatus =
+      statusFilter === 'ALL' ||
+      ticket.status === statusFilter;
+
+    const matchesPriority =
+      priorityFilter === 'ALL' ||
+      ticket.priority === priorityFilter;
+
+    const matchesCategory =
+      categoryFilter === 'ALL' ||
+      ticket.category === categoryFilter;
+
+    return (
+      matchesSearch &&
+      matchesStatus &&
+      matchesPriority &&
+      matchesCategory
+    );
+  });
+
   const getPriorityColor = (priority) => {
     if (priority === 'HIGH') return PRIORITY.HIGH.color;
     if (priority === 'MEDIUM') return PRIORITY.MEDIUM.color;
@@ -156,6 +212,19 @@ function AdminDashboard() {
     if (status === 'IN_PROGRESS') return 'primary';
     return 'warning';
   };
+
+  const clearFilters = () => {
+    setSearchText('');
+    setStatusFilter('ALL');
+    setPriorityFilter('ALL');
+    setCategoryFilter('ALL');
+  };
+
+  const hasActiveFilters =
+    searchText !== '' ||
+    statusFilter !== 'ALL' ||
+    priorityFilter !== 'ALL' ||
+    categoryFilter !== 'ALL';
 
   return (
     <Box
@@ -288,6 +357,7 @@ function AdminDashboard() {
             mb: 4,
           }}
         >
+          {/* Tickets heading */}
           <Box
             sx={{
               px: { xs: 2, md: 3 },
@@ -309,6 +379,135 @@ function AdminDashboard() {
             </Typography>
           </Box>
 
+          {/* Search and filters */}
+          <Box
+            sx={{
+              px: { xs: 2, md: 3 },
+              py: 2,
+              bgcolor: '#fafcfb',
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  md: '2fr 1fr 1fr 1fr auto',
+                },
+                gap: 1.5,
+                alignItems: 'center',
+              }}
+            >
+              <TextField
+                size="small"
+                value={searchText}
+                onChange={(event) =>
+                  setSearchText(event.target.value)
+                }
+                placeholder="Search tickets..."
+                InputProps={{
+                  startAdornment: (
+                    <SearchRoundedIcon
+                      sx={{
+                        color: 'text.secondary',
+                        mr: 1,
+                      }}
+                    />
+                  ),
+                }}
+              />
+
+              <FormControl size="small">
+                <InputLabel>Status</InputLabel>
+
+                <Select
+                  value={statusFilter}
+                  label="Status"
+                  onChange={(event) =>
+                    setStatusFilter(event.target.value)
+                  }
+                >
+                  <MenuItem value="ALL">All statuses</MenuItem>
+                  <MenuItem value="OPEN">Open</MenuItem>
+                  <MenuItem value="IN_PROGRESS">
+                    In progress
+                  </MenuItem>
+                  <MenuItem value="RESOLVED">
+                    Resolved
+                  </MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl size="small">
+                <InputLabel>Priority</InputLabel>
+
+                <Select
+                  value={priorityFilter}
+                  label="Priority"
+                  onChange={(event) =>
+                    setPriorityFilter(event.target.value)
+                  }
+                >
+                  <MenuItem value="ALL">All priorities</MenuItem>
+                  <MenuItem value="HIGH">High</MenuItem>
+                  <MenuItem value="MEDIUM">Medium</MenuItem>
+                  <MenuItem value="LOW">Low</MenuItem>
+                </Select>
+              </FormControl>
+
+              <FormControl size="small">
+                <InputLabel>Category</InputLabel>
+
+                <Select
+                  value={categoryFilter}
+                  label="Category"
+                  onChange={(event) =>
+                    setCategoryFilter(event.target.value)
+                  }
+                >
+                  <MenuItem value="ALL">All categories</MenuItem>
+
+                  {categories.map((category) => (
+                    <MenuItem
+                      key={category}
+                      value={category}
+                    >
+                      {category}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Button
+                variant="text"
+                onClick={clearFilters}
+                disabled={!hasActiveFilters}
+              >
+                Clear
+              </Button>
+            </Box>
+          </Box>
+
+          {/* Filter result count */}
+          <Box
+            sx={{
+              px: { xs: 2, md: 3 },
+              py: 1.5,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <Typography
+              variant="body2"
+              color="text.secondary"
+            >
+              Showing {filteredTickets.length} of {tickets.length}{' '}
+              tickets
+            </Typography>
+          </Box>
+
           {loading ? (
             <Box
               sx={{
@@ -319,11 +518,38 @@ function AdminDashboard() {
             >
               <CircularProgress size={28} />
             </Box>
-          ) : tickets.length === 0 ? (
-            <Box sx={{ p: 4 }}>
-              <Typography color="text.secondary">
-                No tickets found.
+          ) : filteredTickets.length === 0 ? (
+            <Box
+              sx={{
+                p: 5,
+                textAlign: 'center',
+              }}
+            >
+              <Typography
+                sx={{
+                  fontWeight: 600,
+                  mb: 0.5,
+                }}
+              >
+                No tickets found
               </Typography>
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+              >
+                Try changing your search or filters.
+              </Typography>
+
+              {hasActiveFilters && (
+                <Button
+                  sx={{ mt: 2 }}
+                  variant="outlined"
+                  onClick={clearFilters}
+                >
+                  Clear filters
+                </Button>
+              )}
             </Box>
           ) : (
             <Box sx={{ overflowX: 'auto' }}>
@@ -350,7 +576,7 @@ function AdminDashboard() {
                   <TableHeader>Actions</TableHeader>
                 </Box>
 
-                {tickets.map((ticket) => (
+                {filteredTickets.map((ticket) => (
                   <Box
                     key={ticket.id}
                     sx={{
@@ -404,8 +630,12 @@ function AdminDashboard() {
                       sx={{
                         width: 'fit-content',
                         fontWeight: 600,
-                        color: getPriorityColor(ticket.priority),
-                        bgcolor: `${getPriorityColor(ticket.priority)}14`,
+                        color: getPriorityColor(
+                          ticket.priority
+                        ),
+                        bgcolor: `${getPriorityColor(
+                          ticket.priority
+                        )}14`,
                       }}
                     />
 
@@ -426,9 +656,14 @@ function AdminDashboard() {
                           size="small"
                           variant="outlined"
                           onClick={() =>
-                            updateStatus(ticket.id, 'IN_PROGRESS')
+                            updateStatus(
+                              ticket.id,
+                              'IN_PROGRESS'
+                            )
                           }
-                          disabled={updatingId === ticket.id}
+                          disabled={
+                            updatingId === ticket.id
+                          }
                         >
                           Start
                         </Button>
@@ -442,9 +677,14 @@ function AdminDashboard() {
                             <CheckCircleOutlineRoundedIcon />
                           }
                           onClick={() =>
-                            updateStatus(ticket.id, 'RESOLVED')
+                            updateStatus(
+                              ticket.id,
+                              'RESOLVED'
+                            )
                           }
-                          disabled={updatingId === ticket.id}
+                          disabled={
+                            updatingId === ticket.id
+                          }
                         >
                           Resolve
                         </Button>
@@ -582,7 +822,8 @@ function AdminDashboard() {
                           fontSize: 17,
                         }}
                       >
-                        {incident.title || 'Untitled incident'}
+                        {incident.title ||
+                          'Untitled incident'}
                       </Typography>
 
                       <Typography
@@ -617,7 +858,9 @@ function AdminDashboard() {
                     }}
                   >
                     <Chip
-                      label={incident.category || 'Unknown'}
+                      label={
+                        incident.category || 'Unknown'
+                      }
                       size="small"
                     />
 
