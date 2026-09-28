@@ -44,6 +44,9 @@ function AdminDashboard() {
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
+  // Sorting state
+  const [sortBy, setSortBy] = useState('NEWEST');
+
   const loadDashboard = async () => {
     try {
       setLoading(true);
@@ -163,7 +166,7 @@ function AdminDashboard() {
   ].sort();
 
   /*
-   * Apply all search/filter conditions.
+   * Apply all search and filter conditions.
    */
   const filteredTickets = tickets.filter((ticket) => {
     const search = searchText.trim().toLowerCase();
@@ -193,6 +196,41 @@ function AdminDashboard() {
       matchesPriority &&
       matchesCategory
     );
+  });
+
+  /*
+   * Sort the filtered tickets.
+   */
+  const sortedTickets = [...filteredTickets].sort((a, b) => {
+    if (sortBy === 'NEWEST') {
+      return b.id - a.id;
+    }
+
+    if (sortBy === 'OLDEST') {
+      return a.id - b.id;
+    }
+
+    const priorityOrder = {
+      HIGH: 3,
+      MEDIUM: 2,
+      LOW: 1,
+    };
+
+    if (sortBy === 'HIGH_TO_LOW') {
+      return (
+        (priorityOrder[b.priority] || 0) -
+        (priorityOrder[a.priority] || 0)
+      );
+    }
+
+    if (sortBy === 'LOW_TO_HIGH') {
+      return (
+        (priorityOrder[a.priority] || 0) -
+        (priorityOrder[b.priority] || 0)
+      );
+    }
+
+    return 0;
   });
 
   const getPriorityColor = (priority) => {
@@ -379,7 +417,7 @@ function AdminDashboard() {
             </Typography>
           </Box>
 
-          {/* Search and filters */}
+          {/* Search, filters and sorting */}
           <Box
             sx={{
               px: { xs: 2, md: 3 },
@@ -394,12 +432,14 @@ function AdminDashboard() {
                 display: 'grid',
                 gridTemplateColumns: {
                   xs: '1fr',
-                  md: '2fr 1fr 1fr 1fr auto',
+                  sm: 'repeat(2, 1fr)',
+                  md: 'minmax(240px, 2fr) repeat(4, minmax(125px, 1fr)) auto',
                 },
                 gap: 1.5,
                 alignItems: 'center',
               }}
             >
+              {/* Search */}
               <TextField
                 size="small"
                 value={searchText}
@@ -419,6 +459,7 @@ function AdminDashboard() {
                 }}
               />
 
+              {/* Status */}
               <FormControl size="small">
                 <InputLabel>Status</InputLabel>
 
@@ -429,17 +470,25 @@ function AdminDashboard() {
                     setStatusFilter(event.target.value)
                   }
                 >
-                  <MenuItem value="ALL">All statuses</MenuItem>
-                  <MenuItem value="OPEN">Open</MenuItem>
+                  <MenuItem value="ALL">
+                    All statuses
+                  </MenuItem>
+
+                  <MenuItem value="OPEN">
+                    Open
+                  </MenuItem>
+
                   <MenuItem value="IN_PROGRESS">
                     In progress
                   </MenuItem>
+
                   <MenuItem value="RESOLVED">
                     Resolved
                   </MenuItem>
                 </Select>
               </FormControl>
 
+              {/* Priority */}
               <FormControl size="small">
                 <InputLabel>Priority</InputLabel>
 
@@ -450,13 +499,25 @@ function AdminDashboard() {
                     setPriorityFilter(event.target.value)
                   }
                 >
-                  <MenuItem value="ALL">All priorities</MenuItem>
-                  <MenuItem value="HIGH">High</MenuItem>
-                  <MenuItem value="MEDIUM">Medium</MenuItem>
-                  <MenuItem value="LOW">Low</MenuItem>
+                  <MenuItem value="ALL">
+                    All priorities
+                  </MenuItem>
+
+                  <MenuItem value="HIGH">
+                    High
+                  </MenuItem>
+
+                  <MenuItem value="MEDIUM">
+                    Medium
+                  </MenuItem>
+
+                  <MenuItem value="LOW">
+                    Low
+                  </MenuItem>
                 </Select>
               </FormControl>
 
+              {/* Category */}
               <FormControl size="small">
                 <InputLabel>Category</InputLabel>
 
@@ -467,7 +528,9 @@ function AdminDashboard() {
                     setCategoryFilter(event.target.value)
                   }
                 >
-                  <MenuItem value="ALL">All categories</MenuItem>
+                  <MenuItem value="ALL">
+                    All categories
+                  </MenuItem>
 
                   {categories.map((category) => (
                     <MenuItem
@@ -480,17 +543,55 @@ function AdminDashboard() {
                 </Select>
               </FormControl>
 
+              {/* Sort */}
+              <FormControl
+                size="small"
+                sx={{
+                  minWidth: 180,
+                }}
+              >
+                <InputLabel>Sort by</InputLabel>
+
+                <Select
+                  value={sortBy}
+                  label="Sort by"
+                  onChange={(event) =>
+                    setSortBy(event.target.value)
+                  }
+                >
+                  <MenuItem value="NEWEST">
+                    Newest first
+                  </MenuItem>
+
+                  <MenuItem value="OLDEST">
+                    Oldest first
+                  </MenuItem>
+
+                  <MenuItem value="HIGH_TO_LOW">
+                    Priority: High to Low
+                  </MenuItem>
+
+                  <MenuItem value="LOW_TO_HIGH">
+                    Priority: Low to High
+                  </MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* Clear */}
               <Button
                 variant="text"
                 onClick={clearFilters}
                 disabled={!hasActiveFilters}
+                sx={{
+                  whiteSpace: 'nowrap',
+                }}
               >
                 Clear
               </Button>
             </Box>
           </Box>
 
-          {/* Filter result count */}
+          {/* Result count */}
           <Box
             sx={{
               px: { xs: 2, md: 3 },
@@ -508,6 +609,7 @@ function AdminDashboard() {
             </Typography>
           </Box>
 
+          {/* Ticket loading */}
           {loading ? (
             <Box
               sx={{
@@ -518,7 +620,8 @@ function AdminDashboard() {
             >
               <CircularProgress size={28} />
             </Box>
-          ) : filteredTickets.length === 0 ? (
+          ) : sortedTickets.length === 0 ? (
+            /* No tickets */
             <Box
               sx={{
                 p: 5,
@@ -552,6 +655,7 @@ function AdminDashboard() {
               )}
             </Box>
           ) : (
+            /* Ticket table */
             <Box sx={{ overflowX: 'auto' }}>
               <Box sx={{ minWidth: 850 }}>
                 {/* Table header */}
@@ -576,7 +680,7 @@ function AdminDashboard() {
                   <TableHeader>Actions</TableHeader>
                 </Box>
 
-                {filteredTickets.map((ticket) => (
+                {sortedTickets.map((ticket) => (
                   <Box
                     key={ticket.id}
                     sx={{
@@ -591,6 +695,7 @@ function AdminDashboard() {
                       borderColor: 'divider',
                     }}
                   >
+                    {/* ID */}
                     <Typography
                       variant="body2"
                       sx={{
@@ -601,6 +706,7 @@ function AdminDashboard() {
                       #{ticket.id}
                     </Typography>
 
+                    {/* Ticket message */}
                     <Box>
                       <Typography
                         variant="body2"
@@ -620,10 +726,12 @@ function AdminDashboard() {
                       </Typography>
                     </Box>
 
+                    {/* Category */}
                     <Typography variant="body2">
                       {ticket.category || '—'}
                     </Typography>
 
+                    {/* Priority */}
                     <Chip
                       label={ticket.priority || 'LOW'}
                       size="small"
@@ -639,6 +747,7 @@ function AdminDashboard() {
                       }}
                     />
 
+                    {/* Status */}
                     <Chip
                       label={getStatusLabel(ticket.status)}
                       size="small"
@@ -650,6 +759,7 @@ function AdminDashboard() {
                       }}
                     />
 
+                    {/* Actions */}
                     <Stack direction="row" spacing={1}>
                       {ticket.status === 'OPEN' && (
                         <Button
