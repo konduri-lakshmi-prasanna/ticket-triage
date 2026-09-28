@@ -4,6 +4,11 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
   FormControl,
   InputLabel,
   MenuItem,
@@ -21,6 +26,7 @@ import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined
 import CheckCircleOutlineRoundedIcon from '@mui/icons-material/CheckCircleOutlineRounded';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 
 import {
   API_URL,
@@ -36,15 +42,15 @@ function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [detectingIncidents, setDetectingIncidents] = useState(false);
+  const [resolvingIncidentId, setResolvingIncidentId] = useState(null);
+  const [selectedTicket, setSelectedTicket] = useState(null);
   const [error, setError] = useState('');
 
-  // Search and filter state
+  // Search, filter and sorting state
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
-
-  // Sorting state
   const [sortBy, setSortBy] = useState('NEWEST');
 
   const loadDashboard = async () => {
@@ -108,6 +114,13 @@ function AdminDashboard() {
           ticket.id === updatedTicket.id ? updatedTicket : ticket
         )
       );
+
+      if (
+        selectedTicket &&
+        selectedTicket.id === updatedTicket.id
+      ) {
+        setSelectedTicket(updatedTicket);
+      }
     } catch (err) {
       console.error(err);
       setError('Could not update the ticket status.');
@@ -140,6 +153,45 @@ function AdminDashboard() {
     }
   };
 
+  const resolveIncident = async (incidentId) => {
+    try {
+      setResolvingIncidentId(incidentId);
+      setError('');
+
+      const response = await fetch(
+        `${INCIDENT_API_URL}/${incidentId}/status`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            status: 'RESOLVED',
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Unable to resolve incident');
+      }
+
+      const updatedIncident = await response.json();
+
+      setIncidents((currentIncidents) =>
+        currentIncidents.map((incident) =>
+          incident.id === updatedIncident.id
+            ? updatedIncident
+            : incident
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      setError('Could not resolve the incident.');
+    } finally {
+      setResolvingIncidentId(null);
+    }
+  };
+
   const totalTickets = tickets.length;
 
   const highPriorityTickets = tickets.filter(
@@ -150,13 +202,22 @@ function AdminDashboard() {
     (ticket) => ticket.status === 'OPEN'
   ).length;
 
+  const inProgressTickets = tickets.filter(
+    (ticket) => ticket.status === 'IN_PROGRESS'
+  ).length;
+
+  const resolvedTickets = tickets.filter(
+    (ticket) => ticket.status === 'RESOLVED'
+  ).length;
+
   const activeIncidents = incidents.filter(
     (incident) => incident.status === 'ACTIVE'
   ).length;
 
-  /*
-   * Create the category list dynamically from the tickets.
-   */
+  const resolvedIncidents = incidents.filter(
+    (incident) => incident.status === 'RESOLVED'
+  ).length;
+
   const categories = [
     ...new Set(
       tickets
@@ -165,9 +226,6 @@ function AdminDashboard() {
     ),
   ].sort();
 
-  /*
-   * Apply all search and filter conditions.
-   */
   const filteredTickets = tickets.filter((ticket) => {
     const search = searchText.trim().toLowerCase();
 
@@ -198,9 +256,6 @@ function AdminDashboard() {
     );
   });
 
-  /*
-   * Sort the filtered tickets.
-   */
   const sortedTickets = [...filteredTickets].sort((a, b) => {
     if (sortBy === 'NEWEST') {
       return b.id - a.id;
@@ -327,7 +382,7 @@ function AdminDashboard() {
           </Button>
         </Box>
 
-        {/* Error message */}
+        {/* Error */}
         {error && (
           <Paper
             elevation={0}
@@ -346,7 +401,7 @@ function AdminDashboard() {
           </Paper>
         )}
 
-        {/* Summary cards */}
+        {/* Dashboard summary */}
         <Box
           sx={{
             display: 'grid',
@@ -384,6 +439,35 @@ function AdminDashboard() {
           />
         </Box>
 
+        {/* Additional status summary */}
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(2, 1fr)',
+              md: 'repeat(3, 1fr)',
+            },
+            gap: 2,
+            mb: 4,
+          }}
+        >
+          <MiniSummaryCard
+            label="In progress"
+            value={inProgressTickets}
+          />
+
+          <MiniSummaryCard
+            label="Resolved tickets"
+            value={resolvedTickets}
+          />
+
+          <MiniSummaryCard
+            label="Resolved incidents"
+            value={resolvedIncidents}
+          />
+        </Box>
+
         {/* Tickets */}
         <Paper
           elevation={0}
@@ -395,7 +479,6 @@ function AdminDashboard() {
             mb: 4,
           }}
         >
-          {/* Tickets heading */}
           <Box
             sx={{
               px: { xs: 2, md: 3 },
@@ -417,7 +500,7 @@ function AdminDashboard() {
             </Typography>
           </Box>
 
-          {/* Search, filters and sorting */}
+          {/* Search + filters + sorting */}
           <Box
             sx={{
               px: { xs: 2, md: 3 },
@@ -439,7 +522,6 @@ function AdminDashboard() {
                 alignItems: 'center',
               }}
             >
-              {/* Search */}
               <TextField
                 size="small"
                 value={searchText}
@@ -459,7 +541,6 @@ function AdminDashboard() {
                 }}
               />
 
-              {/* Status */}
               <FormControl size="small">
                 <InputLabel>Status</InputLabel>
 
@@ -473,22 +554,18 @@ function AdminDashboard() {
                   <MenuItem value="ALL">
                     All statuses
                   </MenuItem>
-
                   <MenuItem value="OPEN">
                     Open
                   </MenuItem>
-
                   <MenuItem value="IN_PROGRESS">
                     In progress
                   </MenuItem>
-
                   <MenuItem value="RESOLVED">
                     Resolved
                   </MenuItem>
                 </Select>
               </FormControl>
 
-              {/* Priority */}
               <FormControl size="small">
                 <InputLabel>Priority</InputLabel>
 
@@ -502,22 +579,18 @@ function AdminDashboard() {
                   <MenuItem value="ALL">
                     All priorities
                   </MenuItem>
-
                   <MenuItem value="HIGH">
                     High
                   </MenuItem>
-
                   <MenuItem value="MEDIUM">
                     Medium
                   </MenuItem>
-
                   <MenuItem value="LOW">
                     Low
                   </MenuItem>
                 </Select>
               </FormControl>
 
-              {/* Category */}
               <FormControl size="small">
                 <InputLabel>Category</InputLabel>
 
@@ -543,7 +616,6 @@ function AdminDashboard() {
                 </Select>
               </FormControl>
 
-              {/* Sort */}
               <FormControl
                 size="small"
                 sx={{
@@ -562,22 +634,18 @@ function AdminDashboard() {
                   <MenuItem value="NEWEST">
                     Newest first
                   </MenuItem>
-
                   <MenuItem value="OLDEST">
                     Oldest first
                   </MenuItem>
-
                   <MenuItem value="HIGH_TO_LOW">
                     Priority: High to Low
                   </MenuItem>
-
                   <MenuItem value="LOW_TO_HIGH">
                     Priority: Low to High
                   </MenuItem>
                 </Select>
               </FormControl>
 
-              {/* Clear */}
               <Button
                 variant="text"
                 onClick={clearFilters}
@@ -609,7 +677,6 @@ function AdminDashboard() {
             </Typography>
           </Box>
 
-          {/* Ticket loading */}
           {loading ? (
             <Box
               sx={{
@@ -621,7 +688,6 @@ function AdminDashboard() {
               <CircularProgress size={28} />
             </Box>
           ) : sortedTickets.length === 0 ? (
-            /* No tickets */
             <Box
               sx={{
                 p: 5,
@@ -655,15 +721,13 @@ function AdminDashboard() {
               )}
             </Box>
           ) : (
-            /* Ticket table */
             <Box sx={{ overflowX: 'auto' }}>
-              <Box sx={{ minWidth: 850 }}>
-                {/* Table header */}
+              <Box sx={{ minWidth: 930 }}>
                 <Box
                   sx={{
                     display: 'grid',
                     gridTemplateColumns:
-                      '70px minmax(260px, 1fr) 120px 120px 130px 180px',
+                      '60px minmax(230px, 1fr) 110px 100px 120px 230px',
                     gap: 2,
                     px: 3,
                     py: 1.5,
@@ -677,7 +741,9 @@ function AdminDashboard() {
                   <TableHeader>Category</TableHeader>
                   <TableHeader>Priority</TableHeader>
                   <TableHeader>Status</TableHeader>
-                  <TableHeader>Actions</TableHeader>
+                  <Box sx={{ textAlign: 'center' }}>
+  <TableHeader>Actions</TableHeader>
+</Box>
                 </Box>
 
                 {sortedTickets.map((ticket) => (
@@ -686,7 +752,7 @@ function AdminDashboard() {
                     sx={{
                       display: 'grid',
                       gridTemplateColumns:
-                        '70px minmax(260px, 1fr) 120px 120px 130px 180px',
+                        '60px minmax(230px, 1fr) 110px 100px 120px 230px',
                       gap: 2,
                       alignItems: 'center',
                       px: 3,
@@ -695,7 +761,6 @@ function AdminDashboard() {
                       borderColor: 'divider',
                     }}
                   >
-                    {/* ID */}
                     <Typography
                       variant="body2"
                       sx={{
@@ -706,7 +771,6 @@ function AdminDashboard() {
                       #{ticket.id}
                     </Typography>
 
-                    {/* Ticket message */}
                     <Box>
                       <Typography
                         variant="body2"
@@ -726,12 +790,10 @@ function AdminDashboard() {
                       </Typography>
                     </Box>
 
-                    {/* Category */}
                     <Typography variant="body2">
                       {ticket.category || '—'}
                     </Typography>
 
-                    {/* Priority */}
                     <Chip
                       label={ticket.priority || 'LOW'}
                       size="small"
@@ -747,7 +809,6 @@ function AdminDashboard() {
                       }}
                     />
 
-                    {/* Status */}
                     <Chip
                       label={getStatusLabel(ticket.status)}
                       size="small"
@@ -759,8 +820,26 @@ function AdminDashboard() {
                       }}
                     />
 
-                    {/* Actions */}
-                    <Stack direction="row" spacing={1}>
+                    <Stack
+  direction="row"
+  spacing={1}
+  flexWrap="wrap"
+  justifyContent="center"
+  alignItems="center"
+>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={
+                          <VisibilityOutlinedIcon />
+                        }
+                        onClick={() =>
+                          setSelectedTicket(ticket)
+                        }
+                      >
+                        View
+                      </Button>
+
                       {ticket.status === 'OPEN' && (
                         <Button
                           size="small"
@@ -833,7 +912,6 @@ function AdminDashboard() {
             overflow: 'hidden',
           }}
         >
-          {/* Incident heading */}
           <Box
             sx={{
               px: { xs: 2, md: 3 },
@@ -859,7 +937,7 @@ function AdminDashboard() {
                   variant="h2"
                   sx={{ fontSize: 24 }}
                 >
-                  Active incidents
+                  Incidents
                 </Typography>
 
                 <Typography
@@ -894,7 +972,6 @@ function AdminDashboard() {
             </Box>
           </Box>
 
-          {/* Incident list */}
           {incidents.length === 0 ? (
             <Box sx={{ p: 4 }}>
               <Typography color="text.secondary">
@@ -952,7 +1029,11 @@ function AdminDashboard() {
                     <Chip
                       label={incident.status || 'ACTIVE'}
                       size="small"
-                      color="success"
+                      color={
+                        incident.status === 'RESOLVED'
+                          ? 'default'
+                          : 'success'
+                      }
                       variant="outlined"
                       sx={{ fontWeight: 600 }}
                     />
@@ -992,13 +1073,203 @@ function AdminDashboard() {
                         )}14`,
                       }}
                     />
+
+                    {incident.ticketIds && (
+                      <Chip
+                        label={`Tickets: ${incident.ticketIds}`}
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
                   </Stack>
+
+                  {incident.status === 'ACTIVE' && (
+                    <Button
+                      sx={{ mt: 2 }}
+                      size="small"
+                      variant="outlined"
+                      startIcon={
+                        <CheckCircleOutlineRoundedIcon />
+                      }
+                      onClick={() =>
+                        resolveIncident(incident.id)
+                      }
+                      disabled={
+                        resolvingIncidentId === incident.id
+                      }
+                    >
+                      {resolvingIncidentId === incident.id
+                        ? 'Resolving...'
+                        : 'Resolve incident'}
+                    </Button>
+                  )}
                 </Box>
               ))}
             </Stack>
           )}
         </Paper>
       </Box>
+
+      {/* Ticket details dialog */}
+      <Dialog
+        open={Boolean(selectedTicket)}
+        onClose={() => setSelectedTicket(null)}
+        fullWidth
+        maxWidth="md"
+      >
+        {selectedTicket && (
+          <>
+            <DialogTitle>
+              Ticket #{selectedTicket.id}
+            </DialogTitle>
+
+            <DialogContent dividers>
+              <Stack spacing={2.5}>
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                  >
+                    Customer message
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      mt: 0.5,
+                      fontSize: 17,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {selectedTicket.message}
+                  </Typography>
+                </Box>
+
+                <Divider />
+
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: {
+                      xs: '1fr',
+                      sm: 'repeat(2, 1fr)',
+                    },
+                    gap: 2,
+                  }}
+                >
+                  <DetailItem
+                    label="Category"
+                    value={selectedTicket.category}
+                  />
+
+                  <DetailItem
+                    label="Department"
+                    value={selectedTicket.department}
+                  />
+
+                  <DetailItem
+                    label="Priority"
+                    value={selectedTicket.priority}
+                  />
+
+                  <DetailItem
+                    label="Sentiment"
+                    value={selectedTicket.sentiment}
+                  />
+
+                  <DetailItem
+                    label="Status"
+                    value={getStatusLabel(
+                      selectedTicket.status
+                    )}
+                  />
+
+                  <DetailItem
+                    label="Created"
+                    value={formatDate(
+                      selectedTicket.createdAt
+                    )}
+                  />
+                </Box>
+
+                <Divider />
+
+                <Box>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                  >
+                    Suggested response
+                  </Typography>
+
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      mt: 1,
+                      p: 2,
+                      bgcolor: '#f8faf9',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {selectedTicket.suggestedResponse ||
+                        'No suggested response available.'}
+                    </Typography>
+                  </Paper>
+                </Box>
+              </Stack>
+            </DialogContent>
+
+            <DialogActions>
+              <Button
+                onClick={() => setSelectedTicket(null)}
+              >
+                Close
+              </Button>
+
+              {selectedTicket.status === 'OPEN' && (
+                <Button
+                  variant="outlined"
+                  onClick={() =>
+                    updateStatus(
+                      selectedTicket.id,
+                      'IN_PROGRESS'
+                    )
+                  }
+                  disabled={
+                    updatingId === selectedTicket.id
+                  }
+                >
+                  Start ticket
+                </Button>
+              )}
+
+              {selectedTicket.status === 'IN_PROGRESS' && (
+                <Button
+                  variant="contained"
+                  onClick={() =>
+                    updateStatus(
+                      selectedTicket.id,
+                      'RESOLVED'
+                    )
+                  }
+                  disabled={
+                    updatingId === selectedTicket.id
+                  }
+                >
+                  Resolve ticket
+                </Button>
+              )}
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Box>
   );
 }
@@ -1047,6 +1318,60 @@ function SummaryCard({ icon, label, value }) {
         {value}
       </Typography>
     </Paper>
+  );
+}
+
+function MiniSummaryCard({ label, value }) {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        px: 2.5,
+        py: 2,
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 2.5,
+      }}
+    >
+      <Typography
+        variant="body2"
+        color="text.secondary"
+      >
+        {label}
+      </Typography>
+
+      <Typography
+        sx={{
+          mt: 0.5,
+          fontSize: 24,
+          fontWeight: 700,
+        }}
+      >
+        {value}
+      </Typography>
+    </Paper>
+  );
+}
+
+function DetailItem({ label, value }) {
+  return (
+    <Box>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+      >
+        {label}
+      </Typography>
+
+      <Typography
+        sx={{
+          mt: 0.25,
+          fontWeight: 600,
+        }}
+      >
+        {value || '—'}
+      </Typography>
+    </Box>
   );
 }
 
