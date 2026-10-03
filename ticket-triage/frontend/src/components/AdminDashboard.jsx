@@ -30,11 +30,11 @@ import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 
 import {
   API_URL,
+  INCIDENT_API_URL,
   PRIORITY,
+  authFetch,
   formatDate,
 } from '../lib';
-
-const INCIDENT_API_URL = 'http://localhost:8080/api/incidents';
 
 function AdminDashboard() {
   const [tickets, setTickets] = useState([]);
@@ -46,7 +46,6 @@ function AdminDashboard() {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [error, setError] = useState('');
 
-  // Search, filter and sorting state
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
@@ -58,9 +57,10 @@ function AdminDashboard() {
       setLoading(true);
       setError('');
 
+      // IMPORTANT: authFetch sends the JWT Authorization header
       const [ticketsResponse, incidentsResponse] = await Promise.all([
-        fetch(API_URL),
-        fetch(INCIDENT_API_URL),
+        authFetch(API_URL),
+        authFetch(INCIDENT_API_URL),
       ]);
 
       if (!ticketsResponse.ok) {
@@ -95,7 +95,7 @@ function AdminDashboard() {
       setUpdatingId(ticketId);
       setError('');
 
-      const response = await fetch(`${API_URL}/${ticketId}/status`, {
+      const response = await authFetch(`${API_URL}/${ticketId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ function AdminDashboard() {
       setDetectingIncidents(true);
       setError('');
 
-      const response = await fetch(`${INCIDENT_API_URL}/detect`, {
+      const response = await authFetch(`${INCIDENT_API_URL}/detect`, {
         method: 'POST',
       });
 
@@ -158,7 +158,7 @@ function AdminDashboard() {
       setResolvingIncidentId(incidentId);
       setError('');
 
-      const response = await fetch(
+      const response = await authFetch(
         `${INCIDENT_API_URL}/${incidentId}/status`,
         {
           method: 'PATCH',
@@ -551,18 +551,10 @@ function AdminDashboard() {
                     setStatusFilter(event.target.value)
                   }
                 >
-                  <MenuItem value="ALL">
-                    All statuses
-                  </MenuItem>
-                  <MenuItem value="OPEN">
-                    Open
-                  </MenuItem>
-                  <MenuItem value="IN_PROGRESS">
-                    In progress
-                  </MenuItem>
-                  <MenuItem value="RESOLVED">
-                    Resolved
-                  </MenuItem>
+                  <MenuItem value="ALL">All statuses</MenuItem>
+                  <MenuItem value="OPEN">Open</MenuItem>
+                  <MenuItem value="IN_PROGRESS">In progress</MenuItem>
+                  <MenuItem value="RESOLVED">Resolved</MenuItem>
                 </Select>
               </FormControl>
 
@@ -576,18 +568,10 @@ function AdminDashboard() {
                     setPriorityFilter(event.target.value)
                   }
                 >
-                  <MenuItem value="ALL">
-                    All priorities
-                  </MenuItem>
-                  <MenuItem value="HIGH">
-                    High
-                  </MenuItem>
-                  <MenuItem value="MEDIUM">
-                    Medium
-                  </MenuItem>
-                  <MenuItem value="LOW">
-                    Low
-                  </MenuItem>
+                  <MenuItem value="ALL">All priorities</MenuItem>
+                  <MenuItem value="HIGH">High</MenuItem>
+                  <MenuItem value="MEDIUM">Medium</MenuItem>
+                  <MenuItem value="LOW">Low</MenuItem>
                 </Select>
               </FormControl>
 
@@ -601,9 +585,7 @@ function AdminDashboard() {
                     setCategoryFilter(event.target.value)
                   }
                 >
-                  <MenuItem value="ALL">
-                    All categories
-                  </MenuItem>
+                  <MenuItem value="ALL">All categories</MenuItem>
 
                   {categories.map((category) => (
                     <MenuItem
@@ -631,12 +613,8 @@ function AdminDashboard() {
                     setSortBy(event.target.value)
                   }
                 >
-                  <MenuItem value="NEWEST">
-                    Newest first
-                  </MenuItem>
-                  <MenuItem value="OLDEST">
-                    Oldest first
-                  </MenuItem>
+                  <MenuItem value="NEWEST">Newest first</MenuItem>
+                  <MenuItem value="OLDEST">Oldest first</MenuItem>
                   <MenuItem value="HIGH_TO_LOW">
                     Priority: High to Low
                   </MenuItem>
@@ -741,9 +719,10 @@ function AdminDashboard() {
                   <TableHeader>Category</TableHeader>
                   <TableHeader>Priority</TableHeader>
                   <TableHeader>Status</TableHeader>
+
                   <Box sx={{ textAlign: 'center' }}>
-  <TableHeader>Actions</TableHeader>
-</Box>
+                    <TableHeader>Actions</TableHeader>
+                  </Box>
                 </Box>
 
                 {sortedTickets.map((ticket) => (
@@ -800,9 +779,7 @@ function AdminDashboard() {
                       sx={{
                         width: 'fit-content',
                         fontWeight: 600,
-                        color: getPriorityColor(
-                          ticket.priority
-                        ),
+                        color: getPriorityColor(ticket.priority),
                         bgcolor: `${getPriorityColor(
                           ticket.priority
                         )}14`,
@@ -821,18 +798,16 @@ function AdminDashboard() {
                     />
 
                     <Stack
-  direction="row"
-  spacing={1}
-  flexWrap="wrap"
-  justifyContent="center"
-  alignItems="center"
->
+                      direction="row"
+                      spacing={1}
+                      flexWrap="wrap"
+                      justifyContent="center"
+                      alignItems="center"
+                    >
                       <Button
                         size="small"
                         variant="outlined"
-                        startIcon={
-                          <VisibilityOutlinedIcon />
-                        }
+                        startIcon={<VisibilityOutlinedIcon />}
                         onClick={() =>
                           setSelectedTicket(ticket)
                         }
@@ -850,9 +825,7 @@ function AdminDashboard() {
                               'IN_PROGRESS'
                             )
                           }
-                          disabled={
-                            updatingId === ticket.id
-                          }
+                          disabled={updatingId === ticket.id}
                         >
                           Start
                         </Button>
@@ -871,9 +844,7 @@ function AdminDashboard() {
                               'RESOLVED'
                             )
                           }
-                          disabled={
-                            updatingId === ticket.id
-                          }
+                          disabled={updatingId === ticket.id}
                         >
                           Resolve
                         </Button>
@@ -1009,8 +980,7 @@ function AdminDashboard() {
                           fontSize: 17,
                         }}
                       >
-                        {incident.title ||
-                          'Untitled incident'}
+                        {incident.title || 'Untitled incident'}
                       </Typography>
 
                       <Typography
@@ -1049,9 +1019,7 @@ function AdminDashboard() {
                     }}
                   >
                     <Chip
-                      label={
-                        incident.category || 'Unknown'
-                      }
+                      label={incident.category || 'Unknown'}
                       size="small"
                     />
 

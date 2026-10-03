@@ -3,15 +3,18 @@ package com.tickettriage.ticket_triage.controller;
 import com.tickettriage.ticket_triage.dto.TicketAnalysisResult;
 import com.tickettriage.ticket_triage.entity.Ticket;
 import com.tickettriage.ticket_triage.repository.TicketRepository;
+import com.tickettriage.ticket_triage.security.AuthUser;
 import com.tickettriage.ticket_triage.service.RoutingService;
 import com.tickettriage.ticket_triage.service.TicketAnalysisService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/tickets")
@@ -19,6 +22,9 @@ public class TicketController {
 
     // Matches the column length on Ticket.message
     private static final int MAX_MESSAGE_LENGTH = 2000;
+
+    private static final Set<String> VALID_STATUSES =
+            Set.of("OPEN", "IN_PROGRESS", "RESOLVED");
 
     private final TicketRepository ticketRepository;
     private final TicketAnalysisService analysisService;
@@ -34,8 +40,11 @@ public class TicketController {
         this.routingService = routingService;
     }
 
+    // Any logged-in user. The ticket is linked to whoever submitted it.
     @PostMapping
-    public Ticket createTicket(@RequestBody Map<String, String> request) {
+    public Ticket createTicket(
+            @RequestBody Map<String, String> request,
+            @AuthenticationPrincipal AuthUser user) {
 
         String message = request.get("message");
 
@@ -66,31 +75,52 @@ public class TicketController {
         ticket.setSuggestedResponse(
                 analysis.getSuggestedResponse()
         );
+        ticket.setUserId(user.id());
 
         return ticketRepository.save(ticket);
     }
 
+    // ADMIN only (see SecurityConfig): every ticket
     @GetMapping
     public List<Ticket> getAllTickets() {
         return ticketRepository.findAll();
     }
 
-    // Lets the customer look up a single ticket and see its current status
+    // Any logged-in user: only their own tickets
+    @GetMapping("/my")
+    public List<Ticket> getMyTickets(@AuthenticationPrincipal AuthUser user) {
+        return ticketRepository.findByUserIdOrderByCreatedAtDesc(user.id());
+    }
+
+    // A customer can only look up their own ticket, an admin can look up any.
+    // Someone else's ticket returns 404, so ticket numbers cannot be guessed.
     @GetMapping("/{id}")
-    public ResponseEntity<Ticket> getTicket(@PathVariable Long id) {
+    public ResponseEntity<Ticket> getTicket(
+            @PathVariable Long id,
+            @AuthenticationPrincipal AuthUser user) {
+
         return ticketRepository.findById(id)
+                .filter(ticket -> user.isAdmin()
+                        || user.id().equals(ticket.getUserId()))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // ADMIN only (see SecurityConfig)
     @PatchMapping("/{id}/status")
     public ResponseEntity<Ticket> updateTicketStatus(
             @PathVariable Long id,
             @RequestBody Map<String, String> request) {
 
+        String status = request.get("status");
+
+        if (status == null || !VALID_STATUSES.contains(status)) {
+            return ResponseEntity.badRequest().build();
+        }
+
         return ticketRepository.findById(id)
                 .map(ticket -> {
-                    ticket.setStatus(request.get("status"));
+                    ticket.setStatus(status);
                     Ticket updatedTicket = ticketRepository.save(ticket);
                     return ResponseEntity.ok(updatedTicket);
                 })

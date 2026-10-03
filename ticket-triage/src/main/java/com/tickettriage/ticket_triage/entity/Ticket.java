@@ -23,6 +23,10 @@ public class Ticket {
     @Column(length = 1000)
     private String suggestedResponse;
 
+    // The customer who submitted the ticket (null for tickets created before logins existed)
+    @Column(name = "user_id")
+    private Long userId;
+
     private LocalDateTime createdAt;
 
     @PrePersist
@@ -56,6 +60,9 @@ public class Ticket {
 
     public String getSuggestedResponse() { return suggestedResponse; }
     public void setSuggestedResponse(String suggestedResponse) { this.suggestedResponse = suggestedResponse; }
+
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

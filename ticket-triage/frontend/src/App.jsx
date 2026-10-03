@@ -14,7 +14,9 @@ import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 
 import theme from './theme';
 import { loadRecentIds, saveRecentId } from './lib';
+import { useAuth } from './context/AuthContext';
 
+import LoginPage from './components/LoginPage';
 import SubmitPanel from './components/SubmitPanel';
 import TrackPanel from './components/TrackPanel';
 import AdminDashboard from './components/AdminDashboard';
@@ -34,9 +36,89 @@ const HOW_IT_WORKS = [
   },
 ];
 
-function App() {
+function Logo() {
+  return (
+    <Box
+      sx={{
+        width: 34,
+        height: 34,
+        borderRadius: 2,
+        bgcolor: 'primary.main',
+        color: '#fff',
+        display: 'grid',
+        placeItems: 'center',
+      }}
+    >
+      <SupportAgentRoundedIcon fontSize="small" />
+    </Box>
+  );
+}
+
+/*
+ * ADMIN VIEW
+ *
+ * Only shown to a logged-in ADMIN. The backend also checks the role
+ * on every admin request, so this is not just a hidden screen.
+ */
+function AdminApp({ user, onLogout }) {
+  return (
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <Box
+        component="header"
+        sx={{
+          bgcolor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          px: { xs: 2, md: 4 },
+          py: 1.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 2,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+          <Logo />
+
+          <Box>
+            <Typography variant="h3" sx={{ fontSize: 20, lineHeight: 1.1 }}>
+              Support Center
+            </Typography>
+
+            <Typography variant="caption" color="text.secondary">
+              Admin
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ display: { xs: 'none', sm: 'block' } }}
+          >
+            {user.name}
+          </Typography>
+
+          <Button variant="outlined" size="small" onClick={onLogout}>
+            Log out
+          </Button>
+        </Box>
+      </Box>
+
+      <AdminDashboard />
+    </Box>
+  );
+}
+
+/*
+ * CUSTOMER VIEW
+ *
+ * Mounted only after a customer logs in, so the state below
+ * (submitted ticket, recent ticket numbers) starts fresh for each account.
+ */
+function CustomerApp({ user, onLogout }) {
   const [tab, setTab] = useState(0);
-  const [adminMode, setAdminMode] = useState(false);
 
   const [submitted, setSubmitted] = useState(null);
   const [tracked, setTracked] = useState(null);
@@ -52,103 +134,8 @@ function App() {
     setTab(1);
   };
 
-  /*
-   * ADMIN DASHBOARD
-   *
-   * This is a separate view from the customer UI.
-   * The customer UI remains unchanged.
-   */
-  if (adminMode) {
-    return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-
-        <Box
-          sx={{
-            minHeight: '100vh',
-            bgcolor: 'background.default',
-          }}
-        >
-          {/* Admin top bar */}
-          <Box
-            component="header"
-            sx={{
-              bgcolor: 'background.paper',
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              px: { xs: 2, md: 4 },
-              py: 1.5,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 2,
-            }}
-          >
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.25,
-              }}
-            >
-              <Box
-                sx={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 2,
-                  bgcolor: 'primary.main',
-                  color: '#fff',
-                  display: 'grid',
-                  placeItems: 'center',
-                }}
-              >
-                <SupportAgentRoundedIcon fontSize="small" />
-              </Box>
-
-              <Box>
-                <Typography
-                  variant="h3"
-                  sx={{
-                    fontSize: 20,
-                    lineHeight: 1.1,
-                  }}
-                >
-                  Support Center
-                </Typography>
-
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                >
-                  Admin
-                </Typography>
-              </Box>
-            </Box>
-
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => setAdminMode(false)}
-            >
-              Back to Support Center
-            </Button>
-          </Box>
-
-          <AdminDashboard />
-        </Box>
-      </ThemeProvider>
-    );
-  }
-
-  /*
-   * CUSTOMER UI
-   *
-   * This is your friend's original UI.
-   */
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-
+    <>
       <Box
         component="header"
         sx={{
@@ -167,45 +154,15 @@ function App() {
             gap: 1,
           }}
         >
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.25,
-              py: 1.5,
-            }}
-          >
-            <Box
-              sx={{
-                width: 34,
-                height: 34,
-                borderRadius: 2,
-                bgcolor: 'primary.main',
-                color: '#fff',
-                display: 'grid',
-                placeItems: 'center',
-              }}
-            >
-              <SupportAgentRoundedIcon fontSize="small" />
-            </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, py: 1.5 }}>
+            <Logo />
 
-            <Typography
-              variant="h3"
-              sx={{
-                fontSize: 20,
-              }}
-            >
+            <Typography variant="h3" sx={{ fontSize: 20 }}>
               Support Center
             </Typography>
           </Box>
 
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-            }}
-          >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Tabs
               value={tab}
               onChange={(_, value) => setTab(value)}
@@ -215,12 +172,16 @@ function App() {
               <Tab label="Track a ticket" />
             </Tabs>
 
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => setAdminMode(true)}
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ display: { xs: 'none', md: 'block' }, ml: 1 }}
             >
-              Admin
+              {user.name}
+            </Typography>
+
+            <Button variant="outlined" size="small" onClick={onLogout}>
+              Log out
             </Button>
           </Box>
         </Container>
@@ -357,6 +318,28 @@ function App() {
           </Box>
         </Box>
       </Container>
+    </>
+  );
+}
+
+function App() {
+  const { user, logout } = useAuth();
+
+  let view;
+
+  if (!user) {
+    view = <LoginPage />;
+  } else if (user.role === 'ADMIN') {
+    // key makes sure a different login always starts with fresh state
+    view = <AdminApp key={user.id} user={user} onLogout={logout} />;
+  } else {
+    view = <CustomerApp key={user.id} user={user} onLogout={logout} />;
+  }
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {view}
     </ThemeProvider>
   );
 }
